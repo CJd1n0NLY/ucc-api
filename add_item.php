@@ -28,11 +28,19 @@ if (empty($name) || empty($department_id)) {
 $conn->begin_transaction();
 
 try {
-    for ($i = 0; $i < $quantity; $i++) {
+    $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM items WHERE name LIKE CONCAT(?, '%')");
+    $countStmt->bind_param("s", $name);
+    $countStmt->execute();
+    $countResult = $countStmt->get_result();
+    $row = $countResult->fetch_assoc();
+    
+    $start_number = $row['total'] + 1;
 
+    for ($i = 0; $i < $quantity; $i++) {
         $asset_tag = "UCC-" . strtoupper(bin2hex(random_bytes(3))); 
 
-        $finalName = ($quantity > 1) ? "$name #".($i+1) : $name;
+        $current_num = $start_number + $i;
+        $finalName = "$name #$current_num";
 
         $stmt = $conn->prepare("INSERT INTO items (name, department_id, status, image, asset_tag) VALUES (?, ?, ?, ?, ?)");
         $stmt->bind_param("sisss", $finalName, $department_id, $status, $imagePath, $asset_tag);
