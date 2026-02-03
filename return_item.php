@@ -9,7 +9,7 @@ $condition = $data['condition'];
 $conn->begin_transaction();
 
 try {
-    $final_status = 'Returned'; 
+    $final_status = 'Active'; 
     if ($condition == 'Damaged') $final_status = 'Damaged';
     if ($condition == 'Lost') $final_status = 'Lost';
 
@@ -23,6 +23,16 @@ try {
     $stmt2->execute();
 
     $conn->commit();
+    include_once 'mail_helper.php';
+    $tQuery = $conn->query("SELECT s.email, s.full_name, i.name, i.asset_tag FROM transactions t 
+                            JOIN students s ON t.student_number = s.student_number
+                            JOIN items i ON t.item_id = i.id
+                            WHERE t.id = $transaction_id");
+    $data = $tQuery->fetch_assoc();
+
+    if ($data['email']) {
+        sendNotification($data['email'], $data['full_name'], 'RETURN', [['name'=>$data['name'], 'asset_tag'=>$data['asset_tag']]]);
+    }
     echo json_encode(["status" => "success"]);
 } catch (Exception $e) {
     $conn->rollback();

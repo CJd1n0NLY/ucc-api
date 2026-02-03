@@ -1,7 +1,6 @@
 <?php
 include 'db.php';
 
-// 1. Handle Image Upload
 $imagePath = isset($_POST['existing_image']) ? $_POST['existing_image'] : "";
 
 if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
@@ -16,7 +15,6 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
     }
 }
 
-// 2. Get Form Data
 $id = $_POST['id'];
 $name = $_POST['name'];
 $department_id = $_POST['department_id'];
@@ -33,17 +31,13 @@ $conn->begin_transaction();
 
 try {
     if ($batch_mode && !empty($original_base_name)) {
-        // --- BATCH MODE ---
-        // Updates Department and Image for ALL items sharing the base name
         $stmt = $conn->prepare("UPDATE items SET department_id = ?, image = ? WHERE name LIKE CONCAT(?, '%')");
         $stmt->bind_param("iss", $department_id, $imagePath, $original_base_name);
         $stmt->execute();
         
         $msg = "Batch update successful!";
     } else {
-        // --- SINGLE MODE ---
         
-        // [NEW VALIDATION] Check if name exists (excluding current item)
         $checkStmt = $conn->prepare("SELECT id FROM items WHERE name = ? AND id != ?");
         $checkStmt->bind_param("si", $name, $id);
         $checkStmt->execute();
@@ -54,7 +48,6 @@ try {
             exit();
         }
 
-        // Proceed with Update
         $stmt = $conn->prepare("UPDATE items SET name = ?, department_id = ?, status = ?, image = ? WHERE id = ?");
         $stmt->bind_param("sisss", $name, $department_id, $status, $imagePath, $id);
         $stmt->execute();

@@ -1,35 +1,61 @@
 <?php
 include 'db.php';
-$data = json_decode(file_get_contents("php://input"), true);
-$qr_code = $data['qr_code'];
 
-$stmt = $conn->prepare("SELECT * FROM students WHERE student_number = ?");
-$stmt->bind_param("s", $qr_code);
-$stmt->execute();
-$student = $stmt->get_result()->fetch_assoc();
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type");
 
-if ($student) {
-    
-    $overdue_sql = "SELECT COUNT(*) as count FROM transactions 
-                    WHERE student_number = '$qr_code' 
-                    AND status = 'Active' 
-                    AND borrow_date < NOW() - INTERVAL 1 DAY";
-    $overdue_count = $conn->query($overdue_sql)->fetch_assoc()['count'];
+$input = json_decode(file_get_contents("php://input"), true);
 
-    $history_sql = "SELECT COUNT(*) as count FROM transactions 
-                    WHERE student_number = '$qr_code' 
-                    AND status IN ('Lost', 'Damaged')";
-    $history_count = $conn->query($history_sql)->fetch_assoc()['count'];
+if ($input) {
+    $qr_code = $input['qr_code'];
 
-    echo json_encode([
-        "status" => "success", 
-        "data" => $student,
-        "flags" => [
-            "overdue" => $overdue_count,
-            "bad_history" => $history_count
-        ]
-    ]);
-} else {
-    echo json_encode(["status" => "error", "message" => "Student not found"]);
+    $stmt = $conn->prepare("SELECT * FROM students WHERE student_number = ?");
+    $stmt->bind_param("s", $qr_code);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $student = $result->fetch_assoc();
+        unset($student['password']); 
+
+        $overdueQuery = "
+            SELECT COUNT(*) as count 
+            FROM transactions 
+            WHERE student_number = ? 
+            AND return_date IS NULL 
+            AND (
+                status = 'Overdue' 
+                OR 
+                borrow_date < (NOW() - INTERVAL 1 DAY)
+            )
+        ";
+        $stmtOverdue = $conn->prepare($overdueQuery);
+        $stmtOverdue->bind_param("s", $qr_code);
+        $stmtOverdue->execute();
+        $overdueCount = $stmtOverdue->get_result()->fetch_assoc()['count'];
+
+        $historyQuery = "
+            SELECT COUNT(*) as count 
+            FROM transactions 
+            WHERE student_number = ? 
+            AND status IN ('Lost', 'Damaged')
+        ";
+        $stmtHistory = $conn->prepare($historyQuery);
+        $stmtHistory->bind_param("s", $qr_code);
+        $stmtHistory->execute();
+        $historyCount = $stmtHistory->get_result()->fetch_assoc()['count'];
+
+        echo json_encode([
+            "status" => "success",
+            "data" => $student,
+            "flags" => [
+                "overdue" => $overdueCount,
+                "bad_history" => $historyCount
+            ]
+        ]);
+    } else {
+        echo json_encode(["status" => "error", "message" => "Student not found"]);
+    }
 }
 ?>
