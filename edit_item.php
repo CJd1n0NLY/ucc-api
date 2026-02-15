@@ -11,7 +11,7 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
     $target_file = $target_dir . $filename;
     
     if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-        $imagePath = "http://localhost/ucc-api/" . $target_file; 
+        $imagePath = $target_file;
     }
 }
 

@@ -28,6 +28,14 @@ function sendNotification($toEmail, $studentName, $type, $items = []) {
             $mail->Subject = 'Receipt: Items Borrowed';
             $mail->Body    = "<h3>Hi $studentName,</h3><p>You have successfully borrowed:</p>$itemList<p>Please return them on time!</p>";
         } 
+        elseif ($type === 'PARTIAL_BORROW') {
+            $mail->Subject = 'Receipt: Partial Request Approved';
+            $mail->Body    = "<h3>Hi $studentName,</h3>
+                              <p>Your request has been processed. <strong>Please note that some items you requested were currently unavailable and have been unreserved.</strong></p>
+                              <p>You have successfully borrowed the following available items:</p>
+                              $itemList
+                              <p>Please return them on time!</p>";
+        }
         elseif ($type === 'RETURN') {
             $mail->Subject = 'Receipt: Items Returned';
             $mail->Body    = "<h3>Hi $studentName,</h3><p>You have successfully returned:</p>$itemList<p>Thank you!</p>";
