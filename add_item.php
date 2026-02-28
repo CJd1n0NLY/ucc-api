@@ -28,6 +28,14 @@ if (empty($name) || empty($department_id)) {
 $conn->begin_transaction();
 
 try {
+    $slugStmt = $conn->prepare("SELECT slug FROM departments WHERE id = ?");
+    $slugStmt->bind_param("i", $department_id);
+    $slugStmt->execute();
+    $slugRes = $slugStmt->get_result();
+    $slugRow = $slugRes->fetch_assoc();
+    
+    $dept_slug = !empty($slugRow['slug']) ? strtoupper($slugRow['slug']) : 'DEPT'; 
+
     $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM items WHERE name LIKE CONCAT(?, '%')");
     $countStmt->bind_param("s", $name);
     $countStmt->execute();
@@ -37,7 +45,8 @@ try {
     $start_number = $row['total'] + 1;
 
     for ($i = 0; $i < $quantity; $i++) {
-        $asset_tag = "UCC-" . strtoupper(bin2hex(random_bytes(3))); 
+        $random_hex = strtoupper(bin2hex(random_bytes(3)));
+        $asset_tag = "UCC-" . $dept_slug . "-" . $random_hex; 
 
         $current_num = $start_number + $i;
         $finalName = "$name #$current_num";

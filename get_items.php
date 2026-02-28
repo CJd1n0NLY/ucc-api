@@ -4,7 +4,7 @@ include 'auto_update_status.php';
 
 $dept = isset($_GET['dept']) ? $_GET['dept'] : 'all';
 
-$sql = "SELECT i.*, d.name as department_name, 
+$sql = "SELECT i.*, d.name as department_name, d.slug as department_slug,
         t.borrow_date, t.room, t.teacher_name,
         s.full_name as borrower_name, s.student_number,
         a1.full_name as applied_by_name,
@@ -17,11 +17,16 @@ $sql = "SELECT i.*, d.name as department_name,
         LEFT JOIN admins a2 ON t.issued_by = a2.id
         WHERE 1=1";
 
-if($dept != 'all') {
-    $sql .= " AND i.department_id = '$dept'";
+if ($dept !== 'all') {
+    $sql .= " AND i.department_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $dept); 
+} else {
+    $stmt = $conn->prepare($sql);
 }
 
-$result = $conn->query($sql);
+$stmt->execute();
+$result = $stmt->get_result();
 
 $items = array();
 while($row = $result->fetch_assoc()) {

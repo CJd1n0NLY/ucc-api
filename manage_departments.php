@@ -6,7 +6,12 @@ $input = json_decode(file_get_contents("php://input"), true);
 
 if ($method == 'POST') {
     $name = $input['name'];
-    if(empty($name)) { echo json_encode(["status" => "error", "message" => "Name is required"]); exit(); }
+    $slug = isset($input['slug']) ? $input['slug'] : '';
+
+    if(empty($name) || empty($slug)) { 
+        echo json_encode(["status" => "error", "message" => "Name and Slug are required"]); 
+        exit(); 
+    }
 
     $check = $conn->prepare("SELECT id FROM departments WHERE name = ? AND is_archived = 0");
     $check->bind_param("s", $name);
@@ -18,8 +23,8 @@ if ($method == 'POST') {
         exit();
     }
 
-    $stmt = $conn->prepare("INSERT INTO departments (name) VALUES (?)");
-    $stmt->bind_param("s", $name);
+    $stmt = $conn->prepare("INSERT INTO departments (name, slug) VALUES (?, ?)");
+    $stmt->bind_param("ss", $name, $slug);
     
     if ($stmt->execute()) echo json_encode(["status" => "success"]);
     else echo json_encode(["status" => "error", "message" => $conn->error]);
@@ -28,14 +33,35 @@ if ($method == 'POST') {
 elseif ($method == 'PUT') {
     $id = $input['id'];
     $name = $input['name'];
+    $slug = isset($input['slug']) ? $input['slug'] : '';
 
-    if(empty($id) || empty($name)) { echo json_encode(["status" => "error", "message" => "Invalid data"]); exit(); }
+    if(empty($id) || empty($name) || empty($slug)) { 
+        echo json_encode(["status" => "error", "message" => "Invalid data. Name and Slug required."]); 
+        exit(); 
+    }
 
-    $stmt = $conn->prepare("UPDATE departments SET name = ? WHERE id = ?");
-    $stmt->bind_param("si", $name, $id);
-    
-    if ($stmt->execute()) echo json_encode(["status" => "success"]);
-    else echo json_encode(["status" => "error", "message" => $conn->error]);
+    $conn->begin_transaction();
+
+    try {
+        $stmt = $conn->prepare("UPDATE departments SET name = ?, slug = ? WHERE id = ?");
+        $stmt->bind_param("ssi", $name, $slug, $id);
+        $stmt->execute();
+        
+        $updateItemsStmt = $conn->prepare("
+            UPDATE items 
+            SET asset_tag = CONCAT('UCC-', ?, '-', SUBSTRING_INDEX(asset_tag, '-', -1)) 
+            WHERE department_id = ? AND asset_tag IS NOT NULL
+        ");
+        $updateItemsStmt->bind_param("si", $slug, $id);
+        $updateItemsStmt->execute();
+
+        $conn->commit();
+        echo json_encode(["status" => "success"]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["status" => "error", "message" => "Database error: " . $e->getMessage()]);
+    }
 }
 
 elseif ($method == 'DELETE') {
