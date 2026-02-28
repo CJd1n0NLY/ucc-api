@@ -10,6 +10,8 @@ $input = json_decode(file_get_contents("php://input"), true);
 if ($input) {
     $student_number = $input['student_number'];
     $item_ids = $input['item_ids'];
+    $room = $input['room'] ?? null;     
+    $teacher_name = $input['teacher_name'] ?? null;
     $request_date = date('Y-m-d H:i:s');
 
     if (empty($student_number) || empty($item_ids)) {
@@ -39,8 +41,8 @@ if ($input) {
     $conn->begin_transaction();
 
     try {
-        $stmt = $conn->prepare("INSERT INTO borrow_requests (student_number, request_date, status) VALUES (?, ?, 'Pending')");
-        $stmt->bind_param("ss", $student_number, $request_date);
+        $stmt = $conn->prepare("INSERT INTO borrow_requests (student_number, request_date, status, room, teacher_name) VALUES (?, ?, 'Pending', ?, ?)");
+        $stmt->bind_param("ssss", $student_number, $request_date, $room, $teacher_name);
         $stmt->execute();
         $request_id = $conn->insert_id;
 

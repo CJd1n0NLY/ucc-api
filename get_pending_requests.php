@@ -7,7 +7,7 @@ header("Content-Type: application/json");
 $requests = [];
 
 $reqQuery = $conn->query("
-    SELECT r.id as request_id, r.student_number, r.request_date, s.full_name, s.course_section, s.email 
+    SELECT r.id as request_id, r.student_number, r.request_date, r.room, r.teacher_name, s.full_name, s.course_section, s.email 
     FROM borrow_requests r 
     JOIN students s ON r.student_number = s.student_number 
     WHERE r.status = 'Pending' 

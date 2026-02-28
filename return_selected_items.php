@@ -10,13 +10,16 @@ $input = json_decode(file_get_contents("php://input"), true);
 
 if ($input) {
     $student_number = $input['student_number'];
-    $returns = $input['returns']; // Array of {transaction_id, item_id, condition}
+    $returns = $input['returns'];
+    
+    $admin_id = $input['admin_id'] ?? null;
 
     $conn->begin_transaction();
 
     try {
         $returnedItemsData = [];
-        $stmt1 = $conn->prepare("UPDATE transactions SET return_date = NOW(), status = ? WHERE id = ?");
+        
+        $stmt1 = $conn->prepare("UPDATE transactions SET return_date = NOW(), status = ?, received_by = ? WHERE id = ?");
         $stmt2 = $conn->prepare("UPDATE items SET status = ? WHERE id = ?");
 
         foreach ($returns as $ret) {
@@ -28,7 +31,7 @@ if ($input) {
             if ($condition == 'Damaged') $final_status = 'Damaged';
             if ($condition == 'Lost') $final_status = 'Lost';
 
-            $stmt1->bind_param("si", $final_status, $transaction_id);
+            $stmt1->bind_param("sii", $final_status, $admin_id, $transaction_id);
             $stmt1->execute();
 
             $item_status = ($condition == 'Good') ? 'Available' : (($condition == 'Lost') ? 'Lost' : 'Maintenance');
@@ -56,7 +59,5 @@ if ($input) {
         $conn->rollback();
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
-} else {
-    echo json_encode(["status" => "error", "message" => "Invalid input."]);
 }
 ?>

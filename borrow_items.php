@@ -11,6 +11,11 @@ $input = json_decode(file_get_contents("php://input"), true);
 if ($input) {
     $student_number = $input['student_number'];
     $item_ids = $input['item_ids'];
+    
+    $room = $input['room'] ?? null;
+    $teacher_name = $input['teacher_name'] ?? null;
+    $admin_id = $input['admin_id'] ?? null;
+    
     $borrow_date = date('Y-m-d H:i:s');
 
     if (empty($student_number) || empty($item_ids)) {
@@ -21,13 +26,13 @@ if ($input) {
     $conn->begin_transaction();
 
     try {
-        $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, status) VALUES (?, ?, ?, 'Active')");
+        $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, status, room, teacher_name, applied_by, issued_by) VALUES (?, ?, ?, 'Active', ?, ?, ?, ?)");
         $updateStmt = $conn->prepare("UPDATE items SET status = 'Borrowed' WHERE id = ?");
 
         $borrowedItemsData = []; 
 
         foreach ($item_ids as $item_id) {
-            $stmt->bind_param("sis", $student_number, $item_id, $borrow_date);
+            $stmt->bind_param("sisssii", $student_number, $item_id, $borrow_date, $room, $teacher_name, $admin_id, $admin_id);
             $stmt->execute();
 
             $updateStmt->bind_param("i", $item_id);
@@ -52,9 +57,9 @@ if ($input) {
 
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(["status" => "error", "message" => "Transaction failed: " . $e->getMessage()]);
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
 } else {
-    echo json_encode(["status" => "error", "message" => "Invalid input."]);
+    echo json_encode(["status" => "error", "message" => "Invalid Request."]);
 }
 ?>

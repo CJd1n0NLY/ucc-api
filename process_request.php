@@ -12,6 +12,10 @@ if ($input) {
     $request_id = $input['request_id'];
     $action = $input['action']; 
     $approved_item_ids = isset($input['approved_item_ids']) ? $input['approved_item_ids'] : [];
+    
+    $room = $input['room'] ?? null;
+    $teacher_name = $input['teacher_name'] ?? null;
+    $admin_id = $input['admin_id'] ?? null;
 
     $conn->begin_transaction();
 
@@ -27,32 +31,38 @@ if ($input) {
 
         if ($action === 'approve') {
             $borrow_date = date('Y-m-d H:i:s');
-            $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, status) VALUES (?, ?, ?, 'Active')");
-            $updateBorrowedStmt = $conn->prepare("UPDATE items SET status = 'Borrowed' WHERE id = ?");
-            $updateAvailableStmt = $conn->prepare("UPDATE items SET status = 'Available' WHERE id = ?");
+            
+            $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, status, room, teacher_name, applied_by, issued_by) VALUES (?, ?, ?, 'Active', ?, ?, ?, ?)");
+            $updateStmt = $conn->prepare("UPDATE items SET status = 'Borrowed' WHERE id = ?");
 
             $borrowedItemsData = [];
+            
+            foreach ($approved_item_ids as $item_id) {
+                $stmt->bind_param("sisssii", $student_number, $item_id, $borrow_date, $room, $teacher_name, $admin_id, $admin_id);
+                $stmt->execute();
 
-            foreach ($all_requested_items as $item_id) {
-                if (in_array($item_id, $approved_item_ids)) {
-                    $stmt->bind_param("sis", $student_number, $item_id, $borrow_date);
-                    $stmt->execute();
-                    
-                    $updateBorrowedStmt->bind_param("i", $item_id);
-                    $updateBorrowedStmt->execute();
+                $updateStmt->bind_param("i", $item_id);
+                $updateStmt->execute();
 
-                    $itemDataQ = $conn->query("SELECT name, asset_tag FROM items WHERE id = $item_id");
-                    $borrowedItemsData[] = $itemDataQ->fetch_assoc();
-                } else {
-                    $updateAvailableStmt->bind_param("i", $item_id);
-                    $updateAvailableStmt->execute();
+                $itemQ = $conn->query("SELECT name, asset_tag FROM items WHERE id = $item_id");
+                if($row = $itemQ->fetch_assoc()) {
+                    $borrowedItemsData[] = $row;
                 }
             }
 
             $conn->query("UPDATE borrow_requests SET status = 'Approved' WHERE id = $request_id");
 
+            $updateAvailableStmt = $conn->prepare("UPDATE items SET status = 'Available' WHERE id = ?");
+            foreach ($all_requested_items as $item_id) {
+                if (!in_array($item_id, $approved_item_ids)) {
+                    $updateAvailableStmt->bind_param("i", $item_id);
+                    $updateAvailableStmt->execute();
+                }
+            }
+
             $sQuery = $conn->query("SELECT full_name, email FROM students WHERE student_number = '$student_number'");
             $student = $sQuery->fetch_assoc();
+
             if ($student && !empty($student['email']) && count($borrowedItemsData) > 0) {
                 if (count($approved_item_ids) < count($all_requested_items)) {
                     sendNotification($student['email'], $student['full_name'], 'PARTIAL_BORROW', $borrowedItemsData);
@@ -83,7 +93,5 @@ if ($input) {
         $conn->rollback();
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
-} else {
-    echo json_encode(["status" => "error", "message" => "Invalid input."]);
 }
 ?>
