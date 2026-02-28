@@ -19,11 +19,12 @@ $id = $_POST['id'];
 $name = $_POST['name'];
 $department_id = $_POST['department_id'];
 $status = $_POST['status']; 
+$branch_id = isset($_POST['branch_id']) ? intval($_POST['branch_id']) : 0;
 $batch_mode = isset($_POST['batch_mode']) && $_POST['batch_mode'] === 'true';
 $original_base_name = isset($_POST['original_base_name']) ? $_POST['original_base_name'] : "";
 
-if (empty($id) || empty($name) || empty($department_id)) {
-    echo json_encode(["status" => "error", "message" => "Missing required fields."]);
+if (empty($id) || empty($name) || empty($department_id) || empty($branch_id)) {
+    echo json_encode(["status" => "error", "message" => "Missing required fields or branch identity."]);
     exit();
 }
 
@@ -31,25 +32,25 @@ $conn->begin_transaction();
 
 try {
     if ($batch_mode && !empty($original_base_name)) {
-        $stmt = $conn->prepare("UPDATE items SET department_id = ?, image = ? WHERE name LIKE CONCAT(?, '%')");
-        $stmt->bind_param("iss", $department_id, $imagePath, $original_base_name);
+        $stmt = $conn->prepare("UPDATE items SET department_id = ?, image = ? WHERE name LIKE CONCAT(?, '%') AND branch_id = ?");
+        $stmt->bind_param("issi", $department_id, $imagePath, $original_base_name, $branch_id);
         $stmt->execute();
         
         $msg = "Batch update successful!";
     } else {
         
-        $checkStmt = $conn->prepare("SELECT id FROM items WHERE name = ? AND id != ?");
-        $checkStmt->bind_param("si", $name, $id);
+        $checkStmt = $conn->prepare("SELECT id FROM items WHERE name = ? AND id != ? AND branch_id = ?");
+        $checkStmt->bind_param("sii", $name, $id, $branch_id);
         $checkStmt->execute();
         $checkStmt->store_result();
         
         if ($checkStmt->num_rows > 0) {
-            echo json_encode(["status" => "error", "message" => "Item name '$name' already exists!"]);
+            echo json_encode(["status" => "error", "message" => "Item name '$name' already exists in your branch!"]);
             exit();
         }
 
-        $stmt = $conn->prepare("UPDATE items SET name = ?, department_id = ?, status = ?, image = ? WHERE id = ?");
-        $stmt->bind_param("sisss", $name, $department_id, $status, $imagePath, $id);
+        $stmt = $conn->prepare("UPDATE items SET name = ?, department_id = ?, status = ?, image = ? WHERE id = ? AND branch_id = ?");
+        $stmt->bind_param("sisssii", $name, $department_id, $status, $imagePath, $id, $branch_id);
         $stmt->execute();
         
         $msg = "Item updated successfully.";

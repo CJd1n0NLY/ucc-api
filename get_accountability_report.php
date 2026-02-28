@@ -4,6 +4,9 @@ header('Content-Type: application/json');
 
 $start = $_GET['start'] ?? date('Y-m-d', strtotime('-30 days'));
 $end = $_GET['end'] ?? date('Y-m-d');
+$branch_id = isset($_GET['branch_id']) ? intval($_GET['branch_id']) : 0;
+
+if (empty($branch_id)) { echo json_encode(["status" => "error", "message" => "Missing branch_id"]); exit; }
 
 $query = "
     SELECT 
@@ -19,26 +22,23 @@ $query = "
     JOIN students s ON t.student_number = s.student_number
     JOIN items i ON t.item_id = i.id
     WHERE 
-        t.status = 'Overdue'
-        OR t.status = 'Lost' 
-        OR t.status = 'Damaged'
+        (t.status = 'Overdue' OR t.status = 'Lost' OR t.status = 'Damaged')
     AND DATE(t.borrow_date) BETWEEN ? AND ?
+    AND t.branch_id = ?
     ORDER BY t.status DESC, days_overdue DESC
 ";
 
 $stmt = $conn->prepare($query);
 if ($stmt) {
-    $stmt->bind_param("ss", $start, $end);
+    $stmt->bind_param("ssi", $start, $end, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
     $data = [];
     while ($row = $result->fetch_assoc()) {
-        
         if ($row['transaction_status'] === 'Lost' || $row['transaction_status'] === 'Damaged') {
             $row['days_overdue'] = 'N/A'; 
         }
-        
         $data[] = $row;
     }
     echo json_encode(["status" => "success", "data" => $data], JSON_UNESCAPED_SLASHES);

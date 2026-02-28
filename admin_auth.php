@@ -11,7 +11,12 @@ if (isset($input['action']) && $input['action'] === 'login') {
     $username = $input['username'];
     $password = $input['password'];
 
-    $stmt = $conn->prepare("SELECT * FROM admins WHERE username = ?");
+    $stmt = $conn->prepare("
+        SELECT a.*, b.name as branch_name, b.slug as branch_slug 
+        FROM admins a 
+        LEFT JOIN branches b ON a.branch_id = b.id 
+        WHERE a.username = ?
+    ");
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -19,7 +24,7 @@ if (isset($input['action']) && $input['action'] === 'login') {
     if ($result->num_rows === 1) {
         $admin = $result->fetch_assoc();
         if ($password === $admin['password']) { 
-            unset($admin['password']);
+            unset($admin['password']); 
             echo json_encode(["status" => "success", "data" => $admin]);
         } else {
             echo json_encode(["status" => "error", "message" => "Invalid password."]);

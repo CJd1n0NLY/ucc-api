@@ -16,6 +16,12 @@ if ($input) {
     $room = $input['room'] ?? null;
     $teacher_name = $input['teacher_name'] ?? null;
     $admin_id = $input['admin_id'] ?? null;
+    $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
+
+    if (empty($branch_id)) {
+        echo json_encode(["status" => "error", "message" => "Missing branch identity."]);
+        exit;
+    }
 
     $conn->begin_transaction();
 
@@ -32,13 +38,15 @@ if ($input) {
         if ($action === 'approve') {
             $borrow_date = date('Y-m-d H:i:s');
             
-            $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, status, room, teacher_name, applied_by, issued_by) VALUES (?, ?, ?, 'Active', ?, ?, ?, ?)");
+            // Insert the transaction and tag it to the branch
+            $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, status, room, teacher_name, applied_by, issued_by, branch_id) VALUES (?, ?, ?, 'Active', ?, ?, ?, ?, ?)");
             $updateStmt = $conn->prepare("UPDATE items SET status = 'Borrowed' WHERE id = ?");
 
             $borrowedItemsData = [];
             
             foreach ($approved_item_ids as $item_id) {
-                $stmt->bind_param("sisssii", $student_number, $item_id, $borrow_date, $room, $teacher_name, $admin_id, $admin_id);
+                // Bind sisssiiii parameters
+                $stmt->bind_param("sisssiii", $student_number, $item_id, $borrow_date, $room, $teacher_name, $admin_id, $admin_id, $branch_id);
                 $stmt->execute();
 
                 $updateStmt->bind_param("i", $item_id);

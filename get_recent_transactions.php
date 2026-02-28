@@ -1,16 +1,36 @@
 <?php
 include 'db.php';
 
-$sql = "SELECT t.id, t.borrow_date, t.status, t.return_date,
-        s.full_name as student_name, 
-        i.name as item_name
-        FROM transactions t
-        JOIN students s ON t.student_number = s.student_number
-        JOIN items i ON t.item_id = i.id
-        ORDER BY t.borrow_date DESC 
-        LIMIT 5";
+$branch_id = isset($_GET['branch_id']) ? intval($_GET['branch_id']) : 0;
+$role = isset($_GET['role']) ? $_GET['role'] : '';
 
-$result = $conn->query($sql);
+if (empty($branch_id) && $role !== 'super_admin') {
+    echo json_encode([]);
+    exit;
+}
+
+$sql = "
+    SELECT t.id, t.borrow_date, t.status, t.return_date,
+    s.full_name as student_name, 
+    i.name as item_name,
+    b.name as branch_name
+    FROM transactions t
+    JOIN students s ON t.student_number = s.student_number
+    JOIN items i ON t.item_id = i.id
+    LEFT JOIN branches b ON t.branch_id = b.id
+";
+
+if ($role === 'super_admin' && empty($branch_id)) {
+    $sql .= " ORDER BY t.borrow_date DESC LIMIT 5";
+    $stmt = $conn->prepare($sql);
+} else {
+    $sql .= " WHERE t.branch_id = ? ORDER BY t.borrow_date DESC LIMIT 5";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $branch_id);
+}
+
+$stmt->execute();
+$result = $stmt->get_result();
 
 $data = [];
 while ($row = $result->fetch_assoc()) {

@@ -17,27 +17,28 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
 
 $name = $_POST['name'];
 $department_id = $_POST['department_id'];
+$branch_id = isset($_POST['branch_id']) ? intval($_POST['branch_id']) : 0;
 $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
 $status = 'Available';
 
-if (empty($name) || empty($department_id)) {
-    echo json_encode(["status" => "error", "message" => "Please fill in all fields."]);
+if (empty($name) || empty($department_id) || empty($branch_id)) {
+    echo json_encode(["status" => "error", "message" => "Please fill in all fields, including campus assignment."]);
     exit();
 }
 
 $conn->begin_transaction();
 
 try {
-    $slugStmt = $conn->prepare("SELECT slug FROM departments WHERE id = ?");
-    $slugStmt->bind_param("i", $department_id);
+    $slugStmt = $conn->prepare("SELECT slug FROM departments WHERE id = ? AND branch_id = ?");
+    $slugStmt->bind_param("ii", $department_id, $branch_id);
     $slugStmt->execute();
     $slugRes = $slugStmt->get_result();
     $slugRow = $slugRes->fetch_assoc();
     
     $dept_slug = !empty($slugRow['slug']) ? strtoupper($slugRow['slug']) : 'DEPT'; 
 
-    $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM items WHERE name LIKE CONCAT(?, '%')");
-    $countStmt->bind_param("s", $name);
+    $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM items WHERE name LIKE CONCAT(?, '%') AND branch_id = ?");
+    $countStmt->bind_param("si", $name, $branch_id);
     $countStmt->execute();
     $countResult = $countStmt->get_result();
     $row = $countResult->fetch_assoc();
@@ -51,8 +52,8 @@ try {
         $current_num = $start_number + $i;
         $finalName = "$name #$current_num";
 
-        $stmt = $conn->prepare("INSERT INTO items (name, department_id, status, image, asset_tag) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("sisss", $finalName, $department_id, $status, $imagePath, $asset_tag);
+        $stmt = $conn->prepare("INSERT INTO items (name, department_id, status, image, asset_tag, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sisssi", $finalName, $department_id, $status, $imagePath, $asset_tag, $branch_id);
         $stmt->execute();
     }
 

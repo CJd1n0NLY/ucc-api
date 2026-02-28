@@ -5,10 +5,7 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header('Content-Type: application/json');
 require 'db.php';
 
-$query = "SELECT a.id, a.username, a.full_name, a.role, b.name as branch_name 
-          FROM admins a 
-          LEFT JOIN branches b ON a.branch_id = b.id 
-          ORDER BY a.role DESC, a.full_name ASC";
+$query = "SELECT id, name, slug FROM branches WHERE is_active = 1";
 $result = $conn->query($query);
 
 if ($result) {

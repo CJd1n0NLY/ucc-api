@@ -4,8 +4,14 @@ include 'db.php';
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
-$admin_id = isset($_GET['admin_id']) ? $conn->real_escape_string($_GET['admin_id']) : '';
-$role = isset($_GET['role']) ? $conn->real_escape_string($_GET['role']) : '';
+$admin_id = isset($_GET['admin_id']) ? intval($_GET['admin_id']) : 0;
+$role = isset($_GET['role']) ? $_GET['role'] : '';
+$branch_id = isset($_GET['branch_id']) ? intval($_GET['branch_id']) : 0;
+
+if (empty($branch_id)) {
+    echo json_encode([]);
+    exit;
+}
 
 $sql = "
     SELECT 
@@ -28,20 +34,22 @@ $sql = "
     LEFT JOIN admins a1 ON t.applied_by = a1.id
     LEFT JOIN admins a2 ON t.issued_by = a2.id
     LEFT JOIN admins a3 ON t.received_by = a3.id
+    WHERE t.branch_id = ?
 ";
 
 if ($role !== 'super_admin' && !empty($admin_id)) {
-    $sql .= " WHERE t.applied_by = '$admin_id' OR t.issued_by = '$admin_id' OR t.received_by = '$admin_id'";
+    $sql .= " AND (t.applied_by = ? OR t.issued_by = ? OR t.received_by = ?)";
+    $sql .= " ORDER BY t.borrow_date DESC";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iiii", $branch_id, $admin_id, $admin_id, $admin_id);
+} else {
+    $sql .= " ORDER BY t.borrow_date DESC";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $branch_id);
 }
 
-$sql .= " ORDER BY t.borrow_date DESC";
-
-$result = $conn->query($sql);
-
-if (!$result) {
-    echo json_encode(["status" => "error", "message" => "Database error: " . $conn->error]);
-    exit();
-}
+$stmt->execute();
+$result = $stmt->get_result();
 
 $transactions = [];
 while ($row = $result->fetch_assoc()) {

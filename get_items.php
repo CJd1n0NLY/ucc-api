@@ -3,6 +3,12 @@ include 'db.php';
 include 'auto_update_status.php'; 
 
 $dept = isset($_GET['dept']) ? $_GET['dept'] : 'all';
+$branch_id = isset($_GET['branch_id']) ? intval($_GET['branch_id']) : 0;
+
+if (empty($branch_id)) {
+    echo json_encode([]);
+    exit;
+}
 
 $sql = "SELECT i.*, d.name as department_name, d.slug as department_slug,
         t.borrow_date, t.room, t.teacher_name,
@@ -15,14 +21,15 @@ $sql = "SELECT i.*, d.name as department_name, d.slug as department_slug,
         LEFT JOIN students s ON t.student_number = s.student_number
         LEFT JOIN admins a1 ON t.applied_by = a1.id
         LEFT JOIN admins a2 ON t.issued_by = a2.id
-        WHERE 1=1";
+        WHERE i.branch_id = ?";
 
 if ($dept !== 'all') {
     $sql .= " AND i.department_id = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $dept); 
+    $stmt->bind_param("is", $branch_id, $dept); 
 } else {
     $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $branch_id);
 }
 
 $stmt->execute();

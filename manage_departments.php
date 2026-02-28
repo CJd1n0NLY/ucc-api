@@ -7,9 +7,10 @@ $input = json_decode(file_get_contents("php://input"), true);
 if ($method == 'POST') {
     $name = $input['name'];
     $slug = isset($input['slug']) ? $input['slug'] : '';
+    $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
 
-    if(empty($name) || empty($slug)) { 
-        echo json_encode(["status" => "error", "message" => "Name and Slug are required"]); 
+    if(empty($name) || empty($slug) || empty($branch_id)) { 
+        echo json_encode(["status" => "error", "message" => "Name, Slug, and Branch are required"]); 
         exit(); 
     }
 
@@ -23,8 +24,8 @@ if ($method == 'POST') {
         exit();
     }
 
-    $stmt = $conn->prepare("INSERT INTO departments (name, slug) VALUES (?, ?)");
-    $stmt->bind_param("ss", $name, $slug);
+    $stmt = $conn->prepare("INSERT INTO departments (name, slug, branch_id) VALUES (?, ?, ?)");
+    $stmt->bind_param("ssi", $name, $slug, $branch_id);
     
     if ($stmt->execute()) echo json_encode(["status" => "success"]);
     else echo json_encode(["status" => "error", "message" => $conn->error]);

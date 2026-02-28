@@ -9,9 +9,15 @@ $input = json_decode(file_get_contents("php://input"), true);
 
 if ($input) {
     $qr_code = $input['qr_code'];
+    $branch_id = isset($input['branch_id']) ? intval($input['branch_id']) : 0;
 
-    $stmt = $conn->prepare("SELECT * FROM students WHERE student_number = ?");
-    $stmt->bind_param("s", $qr_code);
+    if (empty($branch_id)) {
+        echo json_encode(["status" => "error", "message" => "Branch not specified."]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("SELECT * FROM students WHERE student_number = ? AND branch_id = ?");
+    $stmt->bind_param("si", $qr_code, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 

@@ -6,20 +6,28 @@ header("Content-Type: application/json");
 
 $requests = [];
 
-$reqQuery = $conn->query("
-    SELECT r.id as request_id, r.student_number, r.request_date, r.room, r.teacher_name, s.full_name, s.course_section, s.email 
+$branch_id = isset($_GET['branch_id']) ? intval($_GET['branch_id']) : 0;
+
+if (empty($branch_id)) {
+    echo json_encode(["status" => "error", "message" => "Branch not specified."]);
+    exit;
+}
+
+$reqQuery = $conn->prepare("
+    SELECT r.id as request_id, r.student_number, r.request_date, r.room, r.teacher_name, 
+           s.full_name, s.course_section, s.email 
     FROM borrow_requests r 
     JOIN students s ON r.student_number = s.student_number 
     WHERE r.status = 'Pending' 
+    AND r.branch_id = ?
     ORDER BY r.request_date ASC
 ");
 
-if (!$reqQuery) {
-    echo json_encode(["status" => "error", "message" => "Database error: " . $conn->error]);
-    exit();
-}
+$reqQuery->bind_param("i", $branch_id);
+$reqQuery->execute();
+$result = $reqQuery->get_result();
 
-while ($row = $reqQuery->fetch_assoc()) {
+while ($row = $result->fetch_assoc()) {
     $req_id = $row['request_id'];
     
     $itemQuery = $conn->query("

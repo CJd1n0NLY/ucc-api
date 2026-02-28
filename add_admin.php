@@ -9,6 +9,9 @@ $input = json_decode(file_get_contents("php://input"), true);
 
 if (isset($input['username']) && isset($input['password']) && isset($input['full_name']) && isset($input['role'])) {
     
+    $role = $input['role'];
+    $branch_id = ($role === 'super_admin' || empty($input['branch_id'])) ? null : $input['branch_id'];
+
     $check = $conn->prepare("SELECT id FROM admins WHERE username = ?");
     $check->bind_param("s", $input['username']);
     $check->execute();
@@ -17,8 +20,8 @@ if (isset($input['username']) && isset($input['password']) && isset($input['full
         exit;
     }
 
-    $stmt = $conn->prepare("INSERT INTO admins (username, password, full_name, role) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssss", $input['username'], $input['password'], $input['full_name'], $input['role']);
+    $stmt = $conn->prepare("INSERT INTO admins (username, password, full_name, role, branch_id) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssi", $input['username'], $input['password'], $input['full_name'], $role, $branch_id);
     
     if ($stmt->execute()) {
         echo json_encode(["status" => "success", "message" => "Staff member added successfully!"]);

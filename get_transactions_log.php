@@ -8,6 +8,9 @@ require 'db.php';
 
 $start = $_GET['start'] ?? date('Y-m-d', strtotime('-30 days'));
 $end = $_GET['end'] ?? date('Y-m-d');
+$branch_id = isset($_GET['branch_id']) ? intval($_GET['branch_id']) : 0;
+
+if (empty($branch_id)) { echo json_encode(["status" => "error", "message" => "Missing branch_id"]); exit; }
 
 $query = "
     SELECT 
@@ -23,13 +26,13 @@ $query = "
     LEFT JOIN admins a1 ON t.applied_by = a1.id
     LEFT JOIN admins a2 ON t.issued_by = a2.id
     LEFT JOIN admins a3 ON t.received_by = a3.id
-    WHERE DATE(t.borrow_date) BETWEEN ? AND ?
+    WHERE DATE(t.borrow_date) BETWEEN ? AND ? AND t.branch_id = ?
     ORDER BY t.borrow_date DESC
 ";
 
 $stmt = $conn->prepare($query);
 if ($stmt) {
-    $stmt->bind_param("ss", $start, $end);
+    $stmt->bind_param("ssi", $start, $end, $branch_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
