@@ -1,5 +1,6 @@
 <?php
 include 'db.php';
+include 'mail_helper.php';
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
@@ -19,9 +20,10 @@ $password = $data['password'];
 if ($action === 'register') {
     $full_name = $conn->real_escape_string($data['full_name']);
     $student_number = $conn->real_escape_string($data['student_number']);
-    $course_section = $conn->real_escape_string($data['course_section']);
-    
+    $course_section = strtoupper(trim($conn->real_escape_string($data['course_section'])));
     $branch_id = isset($data['branch_id']) ? intval($data['branch_id']) : 1;
+
+    $force_section = isset($data['force_section']) ? $data['force_section'] : false;
 
     $check = $conn->query("SELECT * FROM students WHERE email = '$email' OR student_number = '$student_number'");
     if ($check->num_rows > 0) {
@@ -29,13 +31,58 @@ if ($action === 'register') {
         exit();
     }
 
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    if (!$force_section) {
+        $checkExact = $conn->query("SELECT DISTINCT course_section FROM students WHERE course_section = '$course_section'");
+        
+        if ($checkExact->num_rows == 0) {
+            $normalized_input = preg_replace('/[^A-Z0-9]/', '', $course_section);
+            
+            $allSections = $conn->query("SELECT DISTINCT course_section FROM students WHERE course_section != ''");
+            $suggestion = "";
 
-    $sql = "INSERT INTO students (student_number, full_name, course_section, email, password, branch_id) 
-            VALUES ('$student_number', '$full_name', '$course_section', '$email', '$hashed_password', $branch_id)";
+            while ($row = $allSections->fetch_assoc()) {
+                $existing = $row['course_section'];
+                $normalized_existing = preg_replace('/[^A-Z0-9]/', '', $existing);
+                
+                if ($normalized_input === $normalized_existing) {
+                    $suggestion = $existing;
+                    break; 
+                }
+            }
+
+            if ($suggestion !== "") {
+                echo json_encode(["status" => "suggest", "suggestion" => $suggestion]);
+                exit();
+            }
+        }
+    }
+
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    
+    $token = bin2hex(random_bytes(16));
+
+    $sql = "INSERT INTO students (student_number, full_name, course_section, email, password, branch_id, is_verified, verification_token) 
+            VALUES ('$student_number', '$full_name', '$course_section', '$email', '$hashed_password', $branch_id, 0, '$token')";
 
     if ($conn->query($sql)) {
-        echo json_encode(["status" => "success", "message" => "Registration successful!"]);
+        $frontend_url = isset($data['frontend_url']) ? rtrim($data['frontend_url'], '/') : 'http://localhost:5173';
+        $verify_link = $frontend_url . "/verify-email?token=" . $token;
+        
+        $mailSent = sendNotification($email, $full_name, 'VERIFY_EMAIL', [], $verify_link);
+        
+        if ($mailSent) {
+            echo json_encode([
+                "status" => "success", 
+                "message" => "Registration successful! Please check your email to verify your account."
+            ]);
+        } else {
+            $conn->query("DELETE FROM students WHERE student_number = '$student_number'");
+            
+            echo json_encode([
+                "status" => "error", 
+                "message" => "Could not send verification email. Please check your email address and try again."
+            ]);
+        }
     } else {
         echo json_encode(["status" => "error", "message" => "Database error: " . $conn->error]);
     }
@@ -51,6 +98,12 @@ if ($action === 'register') {
     if ($result->num_rows > 0) {
         $student = $result->fetch_assoc();
         
+        // Check if verified BEFORE checking passwords
+        if ($student['is_verified'] == 0) {
+            echo json_encode(["status" => "error", "message" => "Please check your email and verify your account before logging in."]);
+            exit();
+        }
+
         $is_password_correct = false;
         
         if (password_verify($password, $student['password'])) {

@@ -4,7 +4,7 @@ use PHPMailer\PHPMailer\Exception;
 
 require 'vendor/autoload.php'; 
 
-function sendNotification($toEmail, $studentName, $type, $items = []) {
+function sendNotification($toEmail, $studentName, $type, $items = [], $link = null) {
     $mail = new PHPMailer(true);
     
     try {
@@ -24,7 +24,15 @@ function sendNotification($toEmail, $studentName, $type, $items = []) {
         foreach($items as $i) { $itemList .= "<li><strong>{$i['name']}</strong> (Tag: {$i['asset_tag']})</li>"; }
         $itemList .= "</ul>";
 
-        if ($type === 'BORROW') {
+        if ($type === 'VERIFY_EMAIL') {
+            $mail->Subject = 'Verify your UCC Student Portal Account';
+            $mail->Body    = "<h3>Hi $studentName,</h3>
+                              <p>Thank you for registering. Please click the button below to verify your email address and activate your account:</p>
+                              <p><a href='$link' style='display:inline-block;padding:10px 20px;background:#f97316;color:#fff;text-decoration:none;border-radius:5px;'>Verify Email</a></p>
+                              <p>If the button doesn't work, copy and paste this link into your browser:<br>$link</p>";
+        }
+        
+        elseif ($type === 'BORROW') {
             $mail->Subject = 'Receipt: Items Borrowed';
             $mail->Body    = "<h3>Hi $studentName,</h3><p>You have successfully borrowed:</p>$itemList<p>Please return them on time!</p>";
         } 
