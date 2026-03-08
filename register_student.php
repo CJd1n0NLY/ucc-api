@@ -8,11 +8,13 @@ header("Access-Control-Allow-Headers: Content-Type");
 $input = json_decode(file_get_contents("php://input"), true);
 
 if ($input) {
-    $student_number = $input['student_number'];
-    $full_name = $input['full_name'];
-    $course_section = $input['course_section'];
-    $email = isset($input['email']) ? $input['email'] : null;
+    $student_number = $conn->real_escape_string($input['student_number']);
+    $full_name = $conn->real_escape_string($input['full_name']);
+    $course_section = strtoupper(trim($conn->real_escape_string($input['course_section'])));
+    $email = isset($input['email']) ? $conn->real_escape_string($input['email']) : null;
     $password = isset($input['password']) ? $input['password'] : $student_number; 
+
+    $force_section = isset($input['force_section']) ? $input['force_section'] : false;
 
     if (empty($student_number) || empty($full_name) || empty($course_section)) {
         echo json_encode(["status" => "error", "message" => "Name and Course are required."]);
@@ -26,8 +28,36 @@ if ($input) {
         exit();
     }
 
+    if (!$force_section) {
+        $checkExact = $conn->query("SELECT DISTINCT course_section FROM students WHERE course_section = '$course_section'");
+        
+        if ($checkExact->num_rows == 0) {
+            $normalized_input = preg_replace('/[^A-Z0-9]/', '', $course_section);
+            
+            $allSections = $conn->query("SELECT DISTINCT course_section FROM students WHERE course_section != ''");
+            $suggestion = "";
+
+            while ($row = $allSections->fetch_assoc()) {
+                $existing = $row['course_section'];
+                $normalized_existing = preg_replace('/[^A-Z0-9]/', '', $existing);
+                
+                if ($normalized_input === $normalized_existing) {
+                    $suggestion = $existing;
+                    break; 
+                }
+            }
+
+            if ($suggestion !== "") {
+                echo json_encode(["status" => "suggest", "suggestion" => $suggestion]);
+                exit();
+            }
+        }
+    }
+
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
     $stmt = $conn->prepare("INSERT INTO students (student_number, full_name, course_section, email, password) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssss", $student_number, $full_name, $course_section, $email, $password);
+    $stmt->bind_param("sssss", $student_number, $full_name, $course_section, $email, $hashed_password);
 
     if ($stmt->execute()) {
         echo json_encode(["status" => "success", "message" => "Student registered successfully."]);
