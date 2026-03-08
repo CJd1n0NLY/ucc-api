@@ -25,6 +25,23 @@ if ($action === 'register') {
 
     $force_section = isset($data['force_section']) ? $data['force_section'] : false;
 
+    $student_number = trim($student_number);
+    if (!preg_match('/^\d{8}-[a-zA-Z]$/', $student_number)) {
+        echo json_encode(["status" => "error", "message" => "Invalid Student Number. Format must be 8 digits, a dash, and 1 letter (e.g., 20221234-S)."]);
+        exit();
+    }
+
+    $full_name = trim($full_name);
+    if (!preg_match('/^[a-zA-Z\s\-\.]+$/', $full_name)) {
+        echo json_encode(["status" => "error", "message" => "Invalid Full Name. Only letters, spaces, hyphens, and periods are allowed."]);
+        exit();
+    }
+
+    if (strlen($password) < 6) {
+        echo json_encode(["status" => "error", "message" => "Password must be at least 6 characters long."]);
+        exit();
+    }
+
     $check = $conn->query("SELECT * FROM students WHERE email = '$email' OR student_number = '$student_number'");
     if ($check->num_rows > 0) {
         echo json_encode(["status" => "error", "message" => "Error: Email or Student Number is already registered."]);

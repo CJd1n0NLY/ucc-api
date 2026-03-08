@@ -1,6 +1,5 @@
 <?php
 include 'db.php';
-include 'auto_update_status.php'; 
 
 $dept = isset($_GET['dept']) ? $_GET['dept'] : 'all';
 $branch_id = isset($_GET['branch_id']) ? intval($_GET['branch_id']) : 0;

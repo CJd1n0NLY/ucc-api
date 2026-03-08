@@ -9,7 +9,7 @@ $condition = $data['condition'];
 $conn->begin_transaction();
 
 try {
-    $final_status = 'Active'; 
+    $final_status = 'Returned'; 
     if ($condition == 'Damaged') $final_status = 'Damaged';
     if ($condition == 'Lost') $final_status = 'Lost';
 

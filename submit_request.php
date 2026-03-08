@@ -13,9 +13,10 @@ if ($input) {
     $room = $input['room'] ?? null;     
     $teacher_name = $input['teacher_name'] ?? null;
     $request_date = date('Y-m-d H:i:s');
+    $reason = $input['reason'] ?? null;
 
-    if (empty($student_number) || empty($item_ids) || !is_array($item_ids)) {
-        echo json_encode(["status" => "error", "message" => "Missing data or invalid item list."]);
+    if (empty($student_number) || empty($item_ids) || !is_array($item_ids) || empty($reason) || empty($room) || empty($teacher_name)) {
+        echo json_encode(["status" => "error", "message" => "Missing required fields (Room, Teacher, or Reason)."]);
         exit();
     }
 
@@ -51,8 +52,8 @@ if ($input) {
     $conn->begin_transaction();
 
     try {
-        $stmt = $conn->prepare("INSERT INTO borrow_requests (student_number, request_date, status, room, teacher_name) VALUES (?, ?, 'Pending', ?, ?)");
-        $stmt->bind_param("ssss", $student_number, $request_date, $room, $teacher_name);
+        $stmt = $conn->prepare("INSERT INTO borrow_requests (student_number, request_date, status, room, teacher_name, request_reason) VALUES (?, ?, 'Pending', ?, ?, ?)");
+        $stmt->bind_param("sssss", $student_number, $request_date, $room, $teacher_name, $reason);
         $stmt->execute();
         $request_id = $conn->insert_id;
 

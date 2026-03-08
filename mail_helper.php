@@ -49,12 +49,15 @@ function sendNotification($toEmail, $studentName, $type, $items = [], $link = nu
             $mail->Body    = "<h3>Hi $studentName,</h3><p>You have successfully returned:</p>$itemList<p>Thank you!</p>";
         }
         elseif ($type === 'REMINDER') {
-            $mail->Subject = 'Reminder: Items Due Tomorrow';
-            $mail->Body    = "<h3>Hi $studentName,</h3><p>This is a reminder to return these items <strong>TOMORROW</strong>:</p>$itemList";
+            $mail->Subject = 'Reminder: Items Due Soon';
+            $mail->Body    = "<h3>Hi $studentName,</h3><p>This is a reminder to return your borrowed items <strong>TODAY by 8:00 PM</strong>:</p>$itemList";
         }
         elseif ($type === 'OVERDUE') {
-            $mail->Subject = 'URGENT: Items Overdue';
-            $mail->Body    = "<h3 style='color:red;'>Hi $studentName,</h3><p>The following items are <strong>OVERDUE</strong>. Please return them immediately:</p>$itemList";
+            $mail->Subject = 'URGENT: Items Overdue (Past 8:00 PM)';
+            $mail->Body    = "<h3 style='color:red;'>Hi $studentName,</h3>
+                              <p>The university closes at 9:00 PM. The following items missed the <strong>8:00 PM deadline</strong> and are now officially <strong>OVERDUE</strong>.</p>
+                              $itemList
+                              <p style='color:red;'><strong>Please return them immediately to the laboratory staff.</strong></p>";
         }
 
         $mail->send();

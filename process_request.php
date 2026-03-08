@@ -37,16 +37,17 @@ if ($input) {
 
         if ($action === 'approve') {
             $borrow_date = date('Y-m-d H:i:s');
+            $due_date = date('Y-m-d 20:00:00');
             
             // Insert the transaction and tag it to the branch
-            $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, status, room, teacher_name, applied_by, issued_by, branch_id) VALUES (?, ?, ?, 'Active', ?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO transactions (student_number, item_id, borrow_date, due_date, status, room, teacher_name, applied_by, issued_by, branch_id) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?)");
             $updateStmt = $conn->prepare("UPDATE items SET status = 'Borrowed' WHERE id = ?");
 
             $borrowedItemsData = [];
             
             foreach ($approved_item_ids as $item_id) {
                 // Bind sisssiiii parameters
-                $stmt->bind_param("sisssiii", $student_number, $item_id, $borrow_date, $room, $teacher_name, $admin_id, $admin_id, $branch_id);
+                $stmt->bind_param("sissssiii", $student_number, $item_id, $borrow_date, $due_date, $room, $teacher_name, $admin_id, $admin_id, $branch_id);
                 $stmt->execute();
 
                 $updateStmt->bind_param("i", $item_id);
@@ -84,13 +85,17 @@ if ($input) {
                 : "All items officially released to student.";
 
         } else if ($action === 'decline') {
+            $rejection_reason = $input['rejection_reason'] ?? null;
             $updateAvailableStmt = $conn->prepare("UPDATE items SET status = 'Available' WHERE id = ?");
             foreach ($all_requested_items as $item_id) {
                 $updateAvailableStmt->bind_param("i", $item_id);
                 $updateAvailableStmt->execute();
             }
             
-            $conn->query("UPDATE borrow_requests SET status = 'Declined' WHERE id = $request_id");
+            $declineStmt = $conn->prepare("UPDATE borrow_requests SET status = 'Declined', rejection_reason = ? WHERE id = ?");
+            $declineStmt->bind_param("si", $rejection_reason, $request_id);
+            $declineStmt->execute();
+
             $msg = "Request declined and items unreserved.";
         }
 

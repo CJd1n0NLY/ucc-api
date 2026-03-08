@@ -16,11 +16,12 @@ $data = [
 ];
 
 $activeQ = $conn->query("
-    SELECT t.id as transaction_id, t.borrow_date, DATE_ADD(t.borrow_date, INTERVAL 3 DAY) as due_date, i.name as item_name, i.asset_tag 
+    SELECT t.id as transaction_id, t.borrow_date, t.due_date, i.name as item_name, i.asset_tag 
     FROM transactions t 
     JOIN items i ON t.item_id = i.id 
     WHERE t.student_number = '$student_id' AND t.return_date IS NULL
 ");
+
 while($row = $activeQ->fetch_assoc()) {
     $data["active"][] = $row;
 }

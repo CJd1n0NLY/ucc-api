@@ -16,6 +16,23 @@ if ($input) {
 
     $force_section = isset($input['force_section']) ? $input['force_section'] : false;
 
+    $student_number = trim($student_number);
+    if (!preg_match('/^\d{8}-[a-zA-Z]$/', $student_number)) {
+        echo json_encode(["status" => "error", "message" => "Invalid Student Number. Format must be 8 digits, a dash, and 1 letter (e.g., 20221234-S)."]);
+        exit();
+    }
+
+    $full_name = trim($full_name);
+    if (!preg_match('/^[a-zA-Z\s\-\.]+$/', $full_name)) {
+        echo json_encode(["status" => "error", "message" => "Invalid Full Name. Only letters, spaces, hyphens, and periods are allowed."]);
+        exit();
+    }
+
+    if (strlen($password) < 8) {
+        echo json_encode(["status" => "error", "message" => "Password must be at least 8 characters long."]);
+        exit();
+    }
+
     if (empty($student_number) || empty($full_name) || empty($course_section)) {
         echo json_encode(["status" => "error", "message" => "Name and Course are required."]);
         exit();
