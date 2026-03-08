@@ -23,7 +23,31 @@ if (isset($input['action']) && $input['action'] === 'login') {
 
     if ($result->num_rows === 1) {
         $admin = $result->fetch_assoc();
-        if ($password === $admin['password']) { 
+        
+        if (isset($admin['is_active']) && $admin['is_active'] == 0) {
+            echo json_encode(["status" => "error", "message" => "This account has been deactivated. Please contact the Super Admin."]);
+            exit();
+        }
+
+        $is_password_correct = false;
+        
+        if (password_verify($password, $admin['password'])) {
+            $is_password_correct = true;
+        } 
+        else if ($password === $admin['password']) { 
+            $is_password_correct = true;
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            
+            $update_pw_stmt = $conn->prepare("UPDATE admins SET password = ? WHERE id = ?");
+            $update_pw_stmt->bind_param("si", $hashed_password, $admin['id']);
+            $update_pw_stmt->execute();
+        }
+
+        if ($is_password_correct) {
+            $update_login_stmt = $conn->prepare("UPDATE admins SET last_login = NOW() WHERE id = ?");
+            $update_login_stmt->bind_param("i", $admin['id']);
+            $update_login_stmt->execute();
+
             unset($admin['password']); 
             echo json_encode(["status" => "success", "data" => $admin]);
         } else {
