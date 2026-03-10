@@ -50,7 +50,7 @@ try {
         }
 
         $stmt = $conn->prepare("UPDATE items SET name = ?, department_id = ?, status = ?, image = ? WHERE id = ? AND branch_id = ?");
-        $stmt->bind_param("sisssii", $name, $department_id, $status, $imagePath, $id, $branch_id);
+        $stmt->bind_param("sissii", $name, $department_id, $status, $imagePath, $id, $branch_id);
         $stmt->execute();
         
         $msg = "Item updated successfully.";
