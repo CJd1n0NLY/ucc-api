@@ -1,5 +1,6 @@
 <?php
 include 'db.php';
+include 'mail_helper.php';
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
@@ -77,11 +78,29 @@ if ($input) {
 
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-    $stmt = $conn->prepare("INSERT INTO students (student_number, full_name, course_section, email, password, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssi", $student_number, $full_name, $course_section, $email, $hashed_password, $branch_id);
+    $token = bin2hex(random_bytes(16));
+
+    $is_verified = !empty($email) ? 0 : 1;
+
+    $stmt = $conn->prepare("INSERT INTO students (student_number, full_name, course_section, email, password, branch_id, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssiis", $student_number, $full_name, $course_section, $email, $hashed_password, $branch_id, $is_verified, $token);
 
     if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Student registered successfully."]);
+        if (!empty($email)) {
+            // Trigger email send if an email exists
+            $frontend_url = isset($input['frontend_url']) ? rtrim($input['frontend_url'], '/') : 'http://localhost:5173';
+            $verify_link = $frontend_url . "/verify-email?token=" . $token;
+            
+            $mailSent = sendNotification($email, $full_name, 'VERIFY_EMAIL', [], $verify_link); 
+            
+            if ($mailSent) { 
+                echo json_encode(["status" => "success", "message" => "Student registered successfully. Verification email sent."]);
+            } else {
+                echo json_encode(["status" => "warning", "message" => "Student registered, but the system could not send the verification email."]);
+            }
+        } else {
+            echo json_encode(["status" => "success", "message" => "Student registered successfully (No email provided)."]);
+        }
     } else {
         echo json_encode(["status" => "error", "message" => "Database error: " . $conn->error]);
     }

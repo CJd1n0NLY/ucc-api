@@ -22,6 +22,7 @@ ucc-api
 ├─ get_items.php
 ├─ get_pending_requests.php
 ├─ get_recent_transactions.php
+├─ get_students.php
 ├─ get_student_portal_data.php
 ├─ get_student_transactions.php
 ├─ get_transactions_log.php
@@ -30,7 +31,7 @@ ucc-api
 ├─ manage_departments.php
 ├─ migrate_tags.php
 ├─ process_request.php
-├─ README-backend.md
+├─ README_backend.md
 ├─ register_student.php
 ├─ reset_admin_password.php
 ├─ return_item.php
@@ -40,6 +41,7 @@ ucc-api
 ├─ submit_request.php
 ├─ toggle_admin_status.php
 ├─ update_admin.php
+├─ update_student.php
 ├─ uploads
 │  ├─ 1770128437_lenovo_thinkpad.jpeg
 │  ├─ 1770128463_MacBook Air M2.jpeg
@@ -55,7 +57,8 @@ ucc-api
 │  ├─ 1770128724_Induction Cooker.jpeg
 │  ├─ 1770190344_Digital Weighing Scale.jpeg
 │  ├─ 1772309240_default-profile.png
-│  └─ 1772996794_nightbg.png
+│  ├─ 1772996794_nightbg.png
+│  └─ 1773925677_images.jfif
 └─ verify_email.php
 
 ```
